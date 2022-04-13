@@ -2,9 +2,9 @@ import React from 'react';
 import ReactDOM from 'react-dom';
 import Emitter from 'tiny-emitter';
 import {
-  WebAnnotation, 
+  WebAnnotation,
   createEnvironment,
-  setLocale 
+  setLocale
 } from '@recogito/recogito-client-core';
 import TextAnnotator from './TextAnnotator';
 import { deflateHTML } from './utils';
@@ -68,6 +68,8 @@ export class Recogito {
         contentEl={contentEl}
         wrapperEl={this._wrapperEl}
         config={config}
+        onEditorOpened={this.handleEditorOpened}
+        onEditorClosed={this.handleEditorClosed}
         onAnnotationSelected={this.handleAnnotationSelected}
         onAnnotationCreated={this.handleAnnotationCreated}
         onAnnotationUpdated={this.handleAnnotationUpdated}
@@ -87,9 +89,23 @@ export class Recogito {
   handleAnnotationDeleted = annotation =>
     this._emitter.emit('deleteAnnotation', annotation.underlying);
 
+    handleEditorOpened = () => {
+        console.log('openeeddddddd');
+        this._emitter.emit('editorOpened');
+    }
+
+    handleEditorClosed = () => {
+        console.log('closeddddddddd');
+        this._emitter.emit('editorClosed');
+  }
+
   /******************/
   /*  External API  */
   /******************/
+
+  // Common shorthand for handling annotationOrId args
+  _wrap = annotationOrId =>
+    annotationOrId?.type === 'Annotation' ? new WebAnnotation(annotationOrId) : annotationOrId;
 
   addAnnotation = annotation =>
     this._app.current.addAnnotation(new WebAnnotation(annotation));
@@ -106,6 +122,14 @@ export class Recogito {
     this._wrapperEl.parentNode.removeChild(this._wrapperEl);
   }
 
+  get disableSelect() {
+    return this._app.current.disableSelect;
+  }
+
+  set disableSelect(select) {
+    this._app.current.disableSelect = select;
+  }
+
   getAnnotations = () => {
     const annotations = this._app.current.getAnnotations();
     return annotations.map(a => a.underlying);
@@ -113,8 +137,7 @@ export class Recogito {
 
   loadAnnotations = (url, requestArgs) => fetch(url, requestArgs)
     .then(response => response.json()).then(annotations => {
-      this.setAnnotations(annotations);
-      return annotations;
+      return this.setAnnotations(annotations).then(() => annotations);
     });
 
   off = (event, callback) =>
@@ -126,10 +149,15 @@ export class Recogito {
   removeAnnotation = annotation =>
     this._app.current.removeAnnotation(new WebAnnotation(annotation));
 
+  selectAnnotation = annotationOrId => {
+    const selected = this._app.current.selectAnnotation(this._wrap(annotationOrId));
+    return selected?.underlying;
+  }
+
   setAnnotations = arg => {
     const annotations = arg || [];
     const webannotations = annotations.map(a => new WebAnnotation(a));
-    this._app.current.setAnnotations(webannotations);
+    return this._app.current.setAnnotations(webannotations);
   }
 
   setAuthInfo = authinfo =>
@@ -144,6 +172,14 @@ export class Recogito {
 
   setServerTime = timestamp =>
     this._environment.setServerTime(timestamp);
+
+  get readOnly() {
+    return this._app.current.readOnly;
+  }
+
+  set readOnly(readOnly) {
+    this._app.current.readOnly = readOnly;
+  }
 
 }
 

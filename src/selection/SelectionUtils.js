@@ -21,8 +21,21 @@ export const trimRange = range => {
   if (leadingSpaces > 0)
     range.setStart(range.startContainer, range.startOffset + leadingSpaces);
 
-  if (trailingSpaces > 0)
-    range.setEnd(range.endContainer, range.endOffset - trailingSpaces);
+  if (trailingSpaces > 0) {
+    const correctedEnd = range.endOffset - trailingSpaces;
+    if (correctedEnd < 0) {
+      // This correction crosses container tag boundaries
+      const prevContainer = range.endContainer.previousSibling || range.endContainer.parentNode;
+      
+      // Get last text child in previous container
+      const prevText = Array.from(prevContainer.childNodes)
+        .filter(n => n.nodeType === Node.TEXT_NODE).pop();
+
+      range.setEnd(prevText, prevText.textContent.length + correctedEnd);
+    } else {
+      range.setEnd(range.endContainer, correctedEnd);
+    }
+  }
 
   return range;
 };
@@ -54,7 +67,7 @@ export const rangeToSelection = (range, containerEl) => {
  * Util function that checks if the given selection is an exact overlap to any
  * existing annotations, and returns them, if so
  */
-export const getExactOverlaps = (newAnnotation, selectedSpans) => {
+export const getExactOverlaps = (selection, selectedSpans) => {
   // All existing annotations at this point
   const existingAnnotations = [];
 
@@ -68,9 +81,10 @@ export const getExactOverlaps = (newAnnotation, selectedSpans) => {
 
   if (existingAnnotations.length > 0)
     return existingAnnotations.filter(anno => {
-      const isSameAnchor = anno.anchor == newAnnotation.anchor;
-      const isSameQuote = anno.quote == newAnnotation.quote;
-      return isSameAnchor && isSameQuote;
+      const pos = selection.selector('TextPositionSelector');
+      const isSameStart = anno.start === pos.start;
+      const isSameEnd = anno.end === pos.end;
+      return isSameStart && isSameEnd;
     });
   else
     return [];

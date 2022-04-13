@@ -17,7 +17,10 @@ export default class TextAnnotator extends Component {
     selectedAnnotation: null,
     selectedDOMElement: null,
     selectedRelation: null,
-    
+
+    // ReadOnly mode
+    readOnly: this.props.config.readOnly,
+
     // Headless mode
     editorDisabled: this.props.config.disableEditor,
   }
@@ -42,7 +45,6 @@ export default class TextAnnotator extends Component {
     this.selectionHandler.on('select', this.handleSelect);
 
     this.relationsLayer = new RelationsLayer(this.props.contentEl);
-    this.relationsLayer.readOnly = true; // Deactivate by default
 
     this.relationsLayer.on('createRelation', this.onEditRelation);
     this.relationsLayer.on('selectRelation', this.onEditRelation);
@@ -64,7 +66,7 @@ export default class TextAnnotator extends Component {
     this.state.editorDisabled ?
       this.onHeadlessSelect(evt) : this.onNormalSelect(evt);
   }
-    
+
   onNormalSelect = evt => {
     const { selection, element } = evt;
     if (selection) {
@@ -82,7 +84,7 @@ export default class TextAnnotator extends Component {
       this.clearState();
     }
   }
-  
+
   onHeadlessSelect = evt => {
     const { selection, element } = evt;
     if (selection) {
@@ -99,7 +101,7 @@ export default class TextAnnotator extends Component {
         this.props.onAnnotationSelected(selection.clone(), element);
       } else {
         // Notify backend text selection to create a new annotation
-        const undraft = annotation => 
+        const undraft = annotation =>
         annotation.clone({
           body : annotation.bodies.map(({ draft, ...rest }) => rest)
         });
@@ -242,12 +244,39 @@ export default class TextAnnotator extends Component {
     this.props.onAnnotationDeleted(relation.annotation);
   }
 
+    onEditorOpened = () => {
+        console.log('open');
+    }
+
+    onEditorClosed = () => {
+        console.log('closed');
+    }
+
   /****************/
   /* External API */
   /****************/
 
   addAnnotation = annotation => {
     this.highlighter.addOrUpdateAnnotation(annotation.clone());
+  }
+
+  get disableSelect() {
+    return !this.selectionHandler.enabled;
+  }
+
+  set disableSelect(disable) {
+    if (disable)
+      this.props.contentEl.classList.add('r6o-noselect');
+    else
+      this.props.contentEl.classList.remove('r6o-noselect');
+
+    this.selectionHandler.enabled = !disable;
+  }
+
+  getAnnotations = () => {
+    const annotations = this.highlighter.getAllAnnotations();
+    const relations = this.relationsLayer.getAllRelations();
+    return annotations.concat(relations).map(a => a.clone());
   }
 
   removeAnnotation = annotation => {
@@ -259,19 +288,36 @@ export default class TextAnnotator extends Component {
       this.clearState();
   }
 
+  selectAnnotation = arg => {
+    // De-select in any case
+    this.setState({
+      selectedAnnotation: null,
+      selectedDOMElement: null
+    }, () => {
+      if (arg) {
+        const spans = this.highlighter.findAnnotationSpans(arg);
+
+        if (spans.length > 0) {
+          const selectedDOMElement = spans[0];
+          const selectedAnnotation = spans[0].annotation;
+
+          this.setState({
+            selectedAnnotation,
+            selectedDOMElement
+          });
+        }
+      }
+    });
+  }
+
   setAnnotations = annotations => {
     this.highlighter.clear();
     this.relationsLayer.clear();
-    
-    const clones = annotations.map(a => a.clone());
-    this.highlighter.init(clones).then(() =>
-      this.relationsLayer.init(clones));
-  }
 
-  getAnnotations = () => {
-    const annotations = this.highlighter.getAllAnnotations();
-    const relations = this.relationsLayer.getAllRelations();
-    return annotations.concat(relations).map(a => a.clone());
+    const clones = annotations.map(a => a.clone());
+
+    return this.highlighter.init(clones).then(() =>
+      this.relationsLayer.init(clones));
   }
 
   setMode = mode => {
@@ -292,11 +338,21 @@ export default class TextAnnotator extends Component {
     }
   }
 
+  get readOnly() {
+    return this.state.readOnly;
+  }
+
+  set readOnly(readOnly) {
+    this.selectionHandler.readOnly = readOnly;
+    // Note: relationsHandler.readOnly should be set by setMode.
+    this.setState({ readOnly });
+  }
+
   render() {
-	// The editor should open under normal conditions - annotation was selected, no headless mode
-    const open = (this.state.selectedAnnotation || this.state.selectedRelation) && !this.state.editorDisabled;  
-  
-    const readOnly = this.props.config.readOnly || this.state.selectedAnnotation?.readOnly
+  	// The editor should open under normal conditions - annotation was selected, no headless mode
+    const open = (this.state.selectedAnnotation || this.state.selectedRelation) && !this.state.editorDisabled;
+
+    const readOnly = this.state.readOnly || this.state.selectedAnnotation?.readOnly
 
     return (open && (
       <>
@@ -307,8 +363,11 @@ export default class TextAnnotator extends Component {
             annotation={this.state.selectedAnnotation}
             selectedElement={this.state.selectedDOMElement}
             readOnly={readOnly}
+            allowEmpty={this.props.config.allowEmpty}
             widgets={this.props.config.widgets}
             env={this.props.env}
+            onEditorOpened={this.onEditorOpened}
+            onEditorClosed={this.onEditorClosed}
             onAnnotationCreated={this.onCreateOrUpdateAnnotation('onAnnotationCreated')}
             onAnnotationUpdated={this.onCreateOrUpdateAnnotation('onAnnotationUpdated')}
             onAnnotationDeleted={this.onDeleteAnnotation}

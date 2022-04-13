@@ -32,6 +32,8 @@ export default class SelectionHandler extends EventEmitter {
 
     this.isEnabled = true;
 
+    this.document = element.ownerDocument;
+
     element.addEventListener('mousedown', this._onMouseDown);
     element.addEventListener('mouseup', this._onMouseUp);
 
@@ -48,12 +50,14 @@ export default class SelectionHandler extends EventEmitter {
   }
 
   _onMouseDown = evt => {
-    this.clearSelection();
+    // left click only
+    if (evt.button === 0)
+      this.clearSelection();
   }
 
   _onMouseUp = evt => {
     if (this.isEnabled) {
-      const selection = getSelection();
+      const selection = this.document.getSelection();
 
       if (selection.isCollapsed) {
         const annotationSpan = evt.target.closest('.r6o-annotation');
@@ -83,10 +87,12 @@ export default class SelectionHandler extends EventEmitter {
           const exactOverlaps = getExactOverlaps(stub, spans);
           if (exactOverlaps.length > 0) {
             // User selected existing - reuse top-most original to avoid stratification
+            const top = exactOverlaps[0];
+
             this.clearSelection();
             this.emit('select', {
-              selection: exactOverlaps[0],
-              element: evt.target.closest('.r6o-annotation')
+              selection: top,
+              element: this.document.querySelector(`.r6o-annotation[data-id="${top.id}"]`)
             });
           } else {
             this.emit('select', {
@@ -107,14 +113,14 @@ export default class SelectionHandler extends EventEmitter {
     this._currentSelection = null;
 
     // Remove native selection, if any
-    if (window.getSelection) {
-      if (window.getSelection().empty) {  // Chrome
-        window.getSelection().empty();
-      } else if (window.getSelection().removeAllRanges) {  // Firefox
-        window.getSelection().removeAllRanges();
+    if (this.document.getSelection) {
+      if (this.document.getSelection().empty) {  // Chrome
+        this.document.getSelection().empty();
+      } else if (this.document.getSelection().removeAllRanges) {  // Firefox
+        this.document.getSelection().removeAllRanges();
       }
-    } else if (document.selection) {  // IE?
-      document.selection.empty();
+    } else if (this.document.selection) {  // IE?
+      this.document.selection.empty();
     }
 
     this.el.classList.remove('r6o-hide-selection');
@@ -123,7 +129,7 @@ export default class SelectionHandler extends EventEmitter {
     if (spans) {
       spans.forEach(span => {
         const parent = span.parentNode;
-        parent.insertBefore(document.createTextNode(span.textContent), span);
+        parent.insertBefore(this.document.createTextNode(span.textContent), span);
         parent.removeChild(span);
       });
     }

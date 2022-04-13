@@ -18,6 +18,8 @@ export default class RelationsLayer extends EventEmitter {
     this.svg.setAttribute('class', 'r6o-relations-layer');
     this.contentEl.appendChild(this.svg);
 
+    this.readOnly = true;  // deactivate by default
+
     this.drawingTool = new DrawingTool(contentEl, this.svg);
 
     // Forward events
@@ -127,7 +129,7 @@ export default class RelationsLayer extends EventEmitter {
    */
   getConnectionsFor = annotation => {
     return this.connections.filter(c =>
-      c.startAnnotation.isEqual(annotation) || c.endAnnotation.isEqual(annotation));
+      c.startAnnotation.id === annotation.id || c.endAnnotation.id === annotation.id);
   }
 
   destroyConnectionsFor = annotation => {
@@ -152,16 +154,16 @@ export default class RelationsLayer extends EventEmitter {
 
   resetDrawing = () =>
     this.drawingTool.reset();
-
-  get readOnly() {
-    this.svg.classList.contains('readonly');
-  }
+    /*
+     *   get readOnly() {
+     *     this.svg.classList.contains('readonly');
+     *   } */
 
   set readOnly(readOnly) {
     if (readOnly)
-      this.svg.setAttribute('class', 'r6o-relations-layer readonly');
+      this.svg.classList.add('readonly');
     else
-      this.svg.setAttribute('class', 'r6o-relations-layer');
+      this.svg.classList.remove('readonly');
   }
 
 }
