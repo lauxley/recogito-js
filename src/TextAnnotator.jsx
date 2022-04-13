@@ -244,6 +244,14 @@ export default class TextAnnotator extends Component {
     this.props.onAnnotationDeleted(relation.annotation);
   }
 
+    onEditorOpened = () => {
+        console.log('open');
+    }
+
+    onEditorClosed = () => {
+        console.log('closed');
+    }
+
   /****************/
   /* External API */
   /****************/
@@ -259,9 +267,9 @@ export default class TextAnnotator extends Component {
   set disableSelect(disable) {
     if (disable)
       this.props.contentEl.classList.add('r6o-noselect');
-    else 
+    else
       this.props.contentEl.classList.remove('r6o-noselect');
-  
+
     this.selectionHandler.enabled = !disable;
   }
 
@@ -288,7 +296,7 @@ export default class TextAnnotator extends Component {
     }, () => {
       if (arg) {
         const spans = this.highlighter.findAnnotationSpans(arg);
-        
+
         if (spans.length > 0) {
           const selectedDOMElement = spans[0];
           const selectedAnnotation = spans[0].annotation;
@@ -307,7 +315,7 @@ export default class TextAnnotator extends Component {
     this.relationsLayer.clear();
 
     const clones = annotations.map(a => a.clone());
-    
+
     return this.highlighter.init(clones).then(() =>
       this.relationsLayer.init(clones));
   }
@@ -358,6 +366,8 @@ export default class TextAnnotator extends Component {
             allowEmpty={this.props.config.allowEmpty}
             widgets={this.props.config.widgets}
             env={this.props.env}
+            onEditorOpened={this.onEditorOpened}
+            onEditorClosed={this.onEditorClosed}
             onAnnotationCreated={this.onCreateOrUpdateAnnotation('onAnnotationCreated')}
             onAnnotationUpdated={this.onCreateOrUpdateAnnotation('onAnnotationUpdated')}
             onAnnotationDeleted={this.onDeleteAnnotation}

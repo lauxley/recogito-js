@@ -68,6 +68,8 @@ export class Recogito {
         contentEl={contentEl}
         wrapperEl={this._wrapperEl}
         config={config}
+        onEditorOpened={this.handleEditorOpened}
+        onEditorClosed={this.handleEditorClosed}
         onAnnotationSelected={this.handleAnnotationSelected}
         onAnnotationCreated={this.handleAnnotationCreated}
         onAnnotationUpdated={this.handleAnnotationUpdated}
@@ -86,6 +88,16 @@ export class Recogito {
 
   handleAnnotationDeleted = annotation =>
     this._emitter.emit('deleteAnnotation', annotation.underlying);
+
+    handleEditorOpened = () => {
+        console.log('openeeddddddd');
+        this._emitter.emit('editorOpened');
+    }
+
+    handleEditorClosed = () => {
+        console.log('closeddddddddd');
+        this._emitter.emit('editorClosed');
+  }
 
   /******************/
   /*  External API  */
